@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ExcelRange
  * Description:       エクセルファイルのアクティブなシートのA1〜AZ300の範囲をpost_metaに保存してショートコードで呼び出すプラグイン
- * Version:           1.0.0
+ * Version:           1.0.2
  * Requires at least: 6.7
  * Requires PHP:      8.3
  * Author:            DAI
@@ -15,7 +15,7 @@
  * @package excelrange
  */
 
-$exrg_version = '1.0.0';
+$exrg_version = '1.0.2';
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
