@@ -5,9 +5,11 @@ class Exrg_Import_Excel {
 
 	public static function init() {
 		add_action( 'admin_menu', [ __CLASS__, 'add_menu_page' ] );
-		add_action( 'wp_ajax_exrg_search_posts',   [ __CLASS__, 'ajax_search_posts' ] );
-		add_action( 'wp_ajax_exrg_import_excel',   [ __CLASS__, 'ajax_import_excel' ] );
-		add_action( 'wp_ajax_exrg_check_excel_data', [ __CLASS__, 'ajax_check_excel_data' ] );
+		add_action( 'wp_dashboard_setup', [ __CLASS__, 'add_dashboard_widget' ] );
+		add_action( 'wp_ajax_exrg_search_posts',      [ __CLASS__, 'ajax_search_posts' ] );
+		add_action( 'wp_ajax_exrg_import_excel',      [ __CLASS__, 'ajax_import_excel' ] );
+		add_action( 'wp_ajax_exrg_check_excel_data',  [ __CLASS__, 'ajax_check_excel_data' ] );
+		add_action( 'wp_ajax_exrg_delete_excel_data', [ __CLASS__, 'ajax_delete_excel_data' ] );
 	}
 
 	public static function add_menu_page() {
@@ -22,8 +24,43 @@ class Exrg_Import_Excel {
 		);
 	}
 
+	public static function add_dashboard_widget() {
+		if ( ! current_user_can( 'edit_pages' ) ) { return; }
+		wp_add_dashboard_widget(
+			'exrg_dashboard_widget',
+			'ExcelRange',
+			[ __CLASS__, 'render_dashboard_widget' ]
+		);
+	}
+
+	public static function render_dashboard_widget() {
+		$import_url = admin_url( 'admin.php?page=exrg-import-excel' );
+		?>
+		<p>ExcelファイルをWordPress投稿に取り込み、ショートコードで値を出力できます。</p>
+
+		<strong>使用例</strong>
+		<ul style="margin:6px 0 12px 1.2em;list-style:disc;">
+			<li>セルの値を表示：<code>[excel range="B2"]</code></li>
+			<li>別の投稿のデータを参照：<code>[excel range="B2" post_id="123"]</code></li>
+			<li>リンクのURL欄にセルのURLを使用：<code>#excel:A1</code></li>
+		</ul>
+
+		<strong>注意事項</strong>
+		<ul style="margin:6px 0 12px 1.2em;list-style:disc;">
+			<li>インポートできる範囲はアクティブシートのA1〜AZ300です。</li>
+			<li>セル内のHTMLタグ・JSコードもそのまま出力されます。安全確認は自己責任で行ってください。</li>
+		</ul>
+
+		<strong>サポート</strong>
+		<p style="margin:6px 0 12px;">有償サポートやカスタマイズは<a href="https://etbs.jp/product-category/wordpress-tools/" target="_blank" rel="noopener">こちらのページ</a>からお問い合わせください。</p>
+
+		<a href="<?php echo esc_url( $import_url ); ?>" class="button button-primary">Excelインポート画面を開く</a>
+		<?php
+	}
+
 	public static function render_import_page() {
-		$post_types = get_post_types( [ 'public' => true ], 'objects' );
+		$post_types   = get_post_types( [ 'public' => true ], 'objects' );
+		$delete_nonce = wp_create_nonce( 'exrg_delete_nonce' );
 		?>
 		<div class="wrap">
 			<h1>Excelインポート</h1>
@@ -77,7 +114,10 @@ class Exrg_Import_Excel {
 				<button id="exrg-check-btn" class="button" style="margin-left:8px;">現在のデータを確認</button>
 			</p>
 
-			<div id="exrg-import-result" style="margin-top:20px;"></div>
+			<div id="exrg-import-result" style="margin-top:20px;">
+				<button id="exrg-delete-btn" class="button" style="display:none;margin-bottom:12px;color:#d63638;border-color:#d63638;">データを削除</button>
+			</div>
+
 			<div>
 				<p style="margin-top:40px;font-size:14px;color:#50575e;">
 					<strong>注意事項</strong><br>
@@ -91,11 +131,22 @@ class Exrg_Import_Excel {
 			</div>
 		</div>
 
+		<!-- 削除確認モーダル -->
+		<dialog id="exrg-delete-dialog" style="border:1px solid #c3c4c7;border-radius:4px;padding:24px 28px;min-width:300px;box-shadow:0 4px 16px rgba(0,0,0,.15);">
+			<p style="margin:0 0 16px;font-size:14px;">このデータを削除しますか？<br><strong>この操作は元に戻せません。</strong></p>
+			<div style="display:flex;gap:8px;justify-content:flex-end;">
+				<button id="exrg-delete-cancel" class="button">キャンセル</button>
+				<button id="exrg-delete-confirm" class="button" style="color:#d63638;border-color:#d63638;">削除する</button>
+			</div>
+		</dialog>
+
 		<script>
 		jQuery( function( $ ) {
-			var nonce          = '<?php echo wp_create_nonce( 'exrg_nonce' ); ?>';
+			var nonce        = '<?php echo wp_create_nonce( 'exrg_nonce' ); ?>';
+			var deleteNonce  = '<?php echo esc_js( $delete_nonce ); ?>';
 			var selectedPostId = 0;
 			var searchTimer;
+			var dialog       = document.getElementById( 'exrg-delete-dialog' );
 
 			/* ---------- タイトル検索 ---------- */
 			$( '#exrg-post-search' ).on( 'input', function() {
@@ -153,6 +204,7 @@ class Exrg_Import_Excel {
 				selectedPostId = parseInt( $( this ).val() ) || 0;
 				$( '#exrg-post-search' ).val( '' );
 				$( '#exrg-search-results' ).hide();
+				$( '#exrg-delete-btn' ).hide();
 				if ( ! selectedPostId ) {
 					$( '#exrg-post-title' ).text( '' );
 					return;
@@ -191,7 +243,8 @@ class Exrg_Import_Excel {
 				formData.append( 'excel_file', file );
 
 				$( '#exrg-import-btn' ).prop( 'disabled', true ).text( 'インポート中...' );
-				$( '#exrg-import-result' ).html( '' );
+				$( '#exrg-delete-btn' ).hide();
+				$( '#exrg-import-result' ).find( '.exrg-result-content' ).remove();
 
 				$.ajax( {
 					url:         ajaxurl,
@@ -200,23 +253,23 @@ class Exrg_Import_Excel {
 					processData: false,
 					contentType: false,
 					success: function( res ) {
+						var html;
 						if ( res.success ) {
-							var html = '<div class="notice notice-success inline"><p>' + res.data.message + '</p></div>';
+							html = '<div class="notice notice-success inline"><p>' + res.data.message + '</p></div>';
 							html += '<table class="widefat striped" style="margin-top:16px;"><thead><tr><th>セル</th><th>値</th></tr></thead><tbody>';
 							res.data.cells.forEach( function( cell ) {
 								html += '<tr><td>' + cell.key + '</td><td>' + $( '<div>' ).text( cell.value ).html() + '</td></tr>';
 							} );
 							html += '</tbody></table>';
-							$( '#exrg-import-result' ).html( html );
+							$( '#exrg-delete-btn' ).show();
 						} else {
-							$( '#exrg-import-result' ).html(
-								'<div class="notice notice-error inline"><p>' + res.data + '</p></div>'
-							);
+							html = '<div class="notice notice-error inline"><p>' + res.data + '</p></div>';
 						}
+						$( '#exrg-import-result' ).append( $( '<div class="exrg-result-content">' ).html( html ) );
 					},
 					error: function() {
-						$( '#exrg-import-result' ).html(
-							'<div class="notice notice-error inline"><p>通信エラーが発生しました。</p></div>'
+						$( '#exrg-import-result' ).append(
+							'<div class="exrg-result-content"><div class="notice notice-error inline"><p>通信エラーが発生しました。</p></div></div>'
 						);
 					},
 					complete: function() {
@@ -224,6 +277,7 @@ class Exrg_Import_Excel {
 					}
 				} );
 			} );
+
 			/* ---------- データ確認 ---------- */
 			$( '#exrg-check-btn' ).on( 'click', function() {
 				var postId = parseInt( $( '#exrg-post-id' ).val() ) || selectedPostId;
@@ -232,30 +286,71 @@ class Exrg_Import_Excel {
 					return;
 				}
 				$( '#exrg-check-btn' ).prop( 'disabled', true ).text( '確認中...' );
-				$( '#exrg-import-result' ).html( '' );
+				$( '#exrg-delete-btn' ).hide();
+				$( '#exrg-import-result' ).find( '.exrg-result-content' ).remove();
 
 				$.post( ajaxurl, {
 					action:  'exrg_check_excel_data',
 					nonce:   nonce,
 					post_id: postId
 				}, function( res ) {
+					var html;
 					if ( res.success ) {
-						var html = '<div class="notice notice-info inline"><p>' + res.data.message + '</p></div>';
+						html = '<div class="notice notice-info inline"><p>' + res.data.message + '</p></div>';
 						if ( res.data.cells.length ) {
 							html += '<table class="widefat striped" style="margin-top:16px;"><thead><tr><th>セル</th><th>値</th></tr></thead><tbody>';
 							res.data.cells.forEach( function( cell ) {
 								html += '<tr><td>' + cell.key + '</td><td>' + $( '<div>' ).text( cell.value ).html() + '</td></tr>';
 							} );
 							html += '</tbody></table>';
+							$( '#exrg-delete-btn' ).show();
 						}
-						$( '#exrg-import-result' ).html( html );
 					} else {
-						$( '#exrg-import-result' ).html(
-							'<div class="notice notice-error inline"><p>' + res.data + '</p></div>'
-						);
+						html = '<div class="notice notice-error inline"><p>' + res.data + '</p></div>';
 					}
+					$( '#exrg-import-result' ).append( $( '<div class="exrg-result-content">' ).html( html ) );
 				} ).always( function() {
 					$( '#exrg-check-btn' ).prop( 'disabled', false ).text( '現在のデータを確認' );
+				} );
+			} );
+
+			/* ---------- 削除ボタン → モーダル表示 ---------- */
+			$( '#exrg-delete-btn' ).on( 'click', function() {
+				dialog.showModal();
+			} );
+
+			$( '#exrg-delete-cancel' ).on( 'click', function() {
+				dialog.close();
+			} );
+
+			dialog.addEventListener( 'click', function( e ) {
+				if ( e.target === dialog ) { dialog.close(); }
+			} );
+
+			/* ---------- 削除確定 ---------- */
+			$( '#exrg-delete-confirm' ).on( 'click', function() {
+				var postId = parseInt( $( '#exrg-post-id' ).val() ) || selectedPostId;
+				if ( ! postId ) { dialog.close(); return; }
+
+				$( '#exrg-delete-confirm' ).prop( 'disabled', true ).text( '削除中...' );
+
+				$.post( ajaxurl, {
+					action:  'exrg_delete_excel_data',
+					nonce:   deleteNonce,
+					post_id: postId
+				}, function( res ) {
+					dialog.close();
+					$( '#exrg-delete-btn' ).hide();
+					$( '#exrg-import-result' ).find( '.exrg-result-content' ).remove();
+					var html;
+					if ( res.success ) {
+						html = '<div class="notice notice-success inline"><p>' + res.data + '</p></div>';
+					} else {
+						html = '<div class="notice notice-error inline"><p>' + res.data + '</p></div>';
+					}
+					$( '#exrg-import-result' ).append( $( '<div class="exrg-result-content">' ).html( html ) );
+				} ).always( function() {
+					$( '#exrg-delete-confirm' ).prop( 'disabled', false ).text( '削除する' );
 				} );
 			} );
 		} );
@@ -364,6 +459,7 @@ class Exrg_Import_Excel {
 			'cells'   => $cells,
 		] );
 	}
+
 	public static function ajax_check_excel_data() {
 		check_ajax_referer( 'exrg_nonce', 'nonce' );
 		if ( ! current_user_can( 'edit_pages' ) ) {
@@ -393,6 +489,32 @@ class Exrg_Import_Excel {
 			'message' => count( $data ) . '件のセルが保存されています（投稿ID: ' . $post_id . '）',
 			'cells'   => $cells,
 		] );
+	}
+
+	public static function ajax_delete_excel_data() {
+		check_ajax_referer( 'exrg_delete_nonce', 'nonce' );
+		if ( ! current_user_can( 'edit_pages' ) ) {
+			wp_send_json_error( '権限がありません' );
+		}
+
+		$post_id = (int) ( $_POST['post_id'] ?? 0 );
+		if ( ! $post_id || ! get_post( $post_id ) ) {
+			wp_send_json_error( '投稿が見つかりません' );
+		}
+
+		$existing = get_post_meta( $post_id, 'excelrange_import', true );
+		if ( empty( $existing ) ) {
+			wp_send_json_error( '削除するデータがありません' );
+		}
+
+		delete_post_meta( $post_id, 'excelrange_import' );
+
+		$remaining = get_post_meta( $post_id, 'excelrange_import', true );
+		if ( ! empty( $remaining ) ) {
+			wp_send_json_error( 'データの削除に失敗しました' );
+		}
+
+		wp_send_json_success( '投稿ID: ' . $post_id . ' のインポートデータを削除しました' );
 	}
 }
 
