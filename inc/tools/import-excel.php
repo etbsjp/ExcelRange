@@ -52,7 +52,7 @@ class Exrg_Import_Excel {
 		</ul>
 
 		<strong>サポート</strong>
-		<p style="margin:6px 0 12px;">有償サポートやカスタマイズは<a href="https://etbs.jp/product-category/wordpress-tools/" target="_blank" rel="noopener">こちらのページ</a>からお問い合わせください。</p>
+		<p style="margin:6px 0 12px;">有償サポートやカスタマイズは<a href="https://etbs.jp/product-category/wordpress-tools/?utm_source=excelrange&utm_medium=plugin" target="_blank" rel="noopener">こちらのページ</a>からお問い合わせください。開発の継続は<a href="https://etbs.jp/product/donate/?utm_source=excelrange&utm_medium=plugin" target="_blank" rel="noopener">ご支援</a>で応援いただけます。</p>
 
 		<a href="<?php echo esc_url( $import_url ); ?>" class="button button-primary">Excelインポート画面を開く</a>
 		<?php
