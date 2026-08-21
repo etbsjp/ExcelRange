@@ -1,0 +1,87 @@
+# ExcelRange
+
+etbs が配布する WordPress プラグイン。共通ルールの正本は `~/.claude/etbs-plugin-rules.md`。
+
+## レビュー工程に大（シニアエンジニア）を追加する
+
+このリポジトリでは、安藤（`vk-code-reviewer`）のレビューのあと、**PR を作成する前に**
+大（`etbs-senior-wp`）の監査を必ず通すこと。大は etbs の申し送りと過去に踏んだ罠に照らして
+「リリースできる形になっているか」を見る担当で、安藤の一般的なコード品質レビューとは層が違う。
+
+- `Agent` ツールで `subagent_type: etbs-senior-wp`、`name: etbs-senior-wp`、
+  **`run_in_background: false`** で起動する
+- **`isolation: "worktree"` は使えるなら付ける**（付けないと起動応答は「成功」と返るのに
+  一度も作業せず待機状態に入ることがある）。ただし ★★ **作業ディレクトリが git リポジトリでないと使えない**。
+  vk-orchestrator のペインは対象リポジトリを特定できないと `~/vk-orchestrator-tasks` で開くため、
+  **この制約に高い確率で当たる**（2026-08-19 / #72・#73 で発生）。
+  その場合は **isolation なしで起動してよい**。実際 #73 は isolation なしで正常に完走している。
+  **見分け方は起動応答の形**——`output_file` 付きの正常形なら動いている。無応答のまま進捗が出なければ待機モードなので、
+  そのとき初めて「対象リポジトリを cwd にした新セッションでやり直す」に切り替える
+- prompt には対象リポジトリ・ブランチ・差分（または PR 番号）を渡す
+- 大には **出力の末尾に `監査結果: PASS` または `監査結果: FAIL` を必ず書くよう指示する**
+  （★ 大の定義ファイルには出力形式の指定が無いため、指示しないと合否を機械判定できない）
+- `監査結果: PASS` を受け取るまで PR を作成しない。`FAIL` なら和田へ差し戻して再監査する
+
+★ 大は vk-agents のメンバー表に登録されていないため、指示が無いと**永久に呼ばれない**。
+
+## 検証環境
+
+Local の `excelrange`（`excelrange.etbs.lc`）。このプラグインは `dirname( __FILE__ )` を
+1階層のみ（`excelrange.php` から `inc/func.php` への require、および `inc/func.php` から
+`tools/import-excel.php` への require）に使っており `dirname( __FILE__, N )` の複数階層遡りは無いため、
+**シンボリックリンク設置でよい**。
+
+CLI 検証では Local の php.ini を `-c` で渡すこと。渡さないと「データベース接続確立エラー」になり、
+**サイトが停止しているように見える**（実際は動いている）。`<runId>` は
+`ls -d ~/Library/Application\ Support/Local/run/*/mysql/mysqld.sock` で特定する。
+
+動作には CBX PhpSpreadSheet Library プラグイン（有効化必須）が必要。未有効化だと管理画面に
+エラー通知が出るだけでフェイルセーフに倒れる（`inc/func.php` の `exrg_check_required_plugins()`）。
+
+## 版数
+
+版数の置き場は `excelrange.php` の `Version:` ヘッダのみ。かつて存在した `$exrg_version` は
+どこからも参照されない死に変数だったため削除済み（task-queue#88）。版数を上げる際は
+このヘッダ1箇所だけを更新すればよい。
+
+```sh
+grep -nE "^ \* Version:" excelrange.php
+```
+
+## 配布物
+
+`dist` ブランチへのマージ＝配信。PUC が配る zip には**追跡しているファイルが全部入る**ため、
+`.gitignore`（追跡させない）と `.gitattributes` の `export-ignore`（zip から落とす）は役割が別。
+両方を維持すること。
+
+## 宣言（Requires）の方針
+
+★★ `Requires at least`（WP）は**実測した下限があるときだけ書く。無ければ書かない。**
+`Requires PHP` は実測下限ではなく **「etbs が動作を保証する最低 PHP」の宣言として 7.4 を書く**。
+**この2つは過剰宣言したときの害の向きが逆なので、同じ基準で扱わない。他のプラグインと横並びで揃えない。**
+
+| | 過剰に宣言すると | 過小に宣言すると |
+|---|---|---|
+| `Requires at least`（WP） | **有効化・更新が拒否される**＝修正が届かない個体を作る | 古い WP に入るが、使う API が無ければその場で分かる |
+| `Requires PHP` | 入れられる環境が狭まるだけ | 構文エラーで白画面。しかも FTP 手動設置は止められない |
+
+- このリポジトリは `Requires at least: 6.7` を**削除**した（task-queue#88）。
+  理由：自前コードの最も新しい WP API は WP 4.2 相当、同梱している PUC（Plugin Update Checker）を
+  含めても WP 4.8 相当で、**合成した実下限は 4.8**。6.7 は初版からの定型文で、
+  特定の API に紐づいたものではなかった（実測は 2026-08-20 の task-queue#88 コメント参照）
+- `Requires PHP: 8.3` は初版からの定型文で実下限ではなかったため **7.4 に下げた**
+  （task-queue#88）。EditLock も初版 1.0.0 で同じ 8.3 を宣言し、1.0.1 で 7.4 に下げている。
+  ★ これは実測下限そのものではない。「7.4 で動く」ことの証明であって *7.4 未満で動かない*
+  ことの証明ではなく、7.3 以下は未検証。そのうえで保守方針として 7.4 を宣言している。
+  次に見た人が「下限じゃないなら消せる」と判断しないよう、この理由を残しておく
+- 依存プラグイン CBX PhpSpreadSheet Library の要求（`Requires PHP: 8.1.99`）は
+  **ヘッダでは締めない**。`inc/func.php:12` の `exrg_check_required_plugins()` が
+  実行時（`admin_init`）に有効化チェックをしており、未有効化なら管理画面に通知が出る
+  フェイルセーフ構成のため
+
+★ `README.md` の「必要環境」にもヘッダと同じ情報を書いている（利用者向けの説明のため）。
+**ヘッダの `Requires at least` / `Requires PHP` を変更したときは、`README.md` の該当箇所も
+同時に見直すこと。** `README.md` は `export-ignore` されておらず配布 zip に含まれるため、
+ヘッダだけ直しても README が古いままだと利用者には要件が伝わり続ける。揃えないまま放置すると、
+次に見た人がどちらが正しいか分からず、README に合わせてヘッダへ過剰宣言を書き戻す方向に
+動きかねない。
