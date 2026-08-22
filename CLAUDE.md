@@ -74,10 +74,27 @@ grep -nE "^ \* Version:" excelrange.php
   ★ これは実測下限そのものではない。「7.4 で動く」ことの証明であって *7.4 未満で動かない*
   ことの証明ではなく、7.3 以下は未検証。そのうえで保守方針として 7.4 を宣言している。
   次に見た人が「下限じゃないなら消せる」と判断しないよう、この理由を残しておく
-- 依存プラグイン CBX PhpSpreadSheet Library の要求（`Requires PHP: 8.1.99`）は
+- 依存プラグイン CBX PhpSpreadSheet Library の PHP バージョン要求（`Requires PHP: 8.1.99`）は
   **ヘッダでは締めない**。`inc/func.php:12` の `exrg_check_required_plugins()` が
   実行時（`admin_init`）に有効化チェックをしており、未有効化なら管理画面に通知が出る
   フェイルセーフ構成のため
+- 一方、プラグインとしての有効化必須自体は `Requires Plugins:  cbxphpspreadsheet` で宣言している
+  （task-queue#88）。`inc/func.php:15` の `is_plugin_active()` チェックと
+  `inc/tools/import-excel.php:430` の `\PhpOffice\PhpSpreadsheet\IOFactory::load()` 直接呼び出しにより、
+  無ければ Fatal になる硬い依存のため。cbxphpspreadsheet は wordpress.org 未掲載
+  （GitHub 配布のみ）だが、WP コアの `Requires Plugins` 解決は wordpress.org ではなく
+  **インストール済みプラグインのフォルダ名（スラッグ）を突き合わせる**方式
+  （`WP_Plugin_Dependencies::convert_to_slug()` / `get_plugin_dirnames()`）のため、
+  wordpress.org 非掲載でも有効化ブロックとしては機能する（Local `excelrange.etbs.lc` で
+  WP 7.0 のコアを CLI から `wp-load.php` 経由で読み込み、cbxphpspreadsheet 停止中に
+  `activate_plugin('excelrange/excelrange.php')` が `plugin_missing_dependencies` の
+  `WP_Error` で拒否されることを実測済み）。wordpress.org 非掲載の影響を受けるのは
+  プラグイン一覧・インストール画面での名称表示とワンクリックインストール導線のみ
+  （`get_dependency_api_data()` が `plugins_api()` を叩く箇所で、失敗しても表示が
+  スラッグのままになるだけでブロック機構自体には影響しない）。
+  ★ `Requires Plugins` は WP 6.5 で追加された機構（`WP_Plugin_Dependencies` の
+  `@since 6.5.0`）。6.5 未満ではヘッダごと無視されるため、その版数帯では
+  `exrg_check_required_plugins()` の実行時チェックのみが防衛線になる
 
 ★ `README.md` の「必要環境」にもヘッダと同じ情報を書いている（利用者向けの説明のため）。
 **ヘッダの `Requires at least` / `Requires PHP` を変更したときは、`README.md` の該当箇所も
