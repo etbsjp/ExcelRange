@@ -3,8 +3,8 @@
  * Plugin Name:       ExcelRange
  * Description:       エクセルファイルのアクティブなシートのA1〜AZ300の範囲をpost_metaに保存してショートコードで呼び出すプラグイン
  * Version:           1.0.3
- * Requires at least: 6.7
- * Requires PHP:      8.3
+ * Requires PHP:      7.4
+ * Requires Plugins:  cbxphpspreadsheet
  * Author:            DAI
  * Author URI:        https://etbs.jp
  * Plugin URI:        https://etbs.jp/product-category/wordpress-tools/
@@ -15,7 +15,6 @@
  * @package excelrange
  */
 
-$exrg_version = '1.0.3';
 define( 'EXRG_PLUGIN_FILE', __FILE__ );
 
 if ( ! defined( 'ABSPATH' ) ) {

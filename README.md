@@ -4,8 +4,7 @@ ExcelファイルのセルデータをWordPressの投稿に紐づけ、ショー
 
 ## 必要環境
 
-- WordPress 6.7 以上
-- PHP 8.3 以上
+- PHP 7.4 以上
 - [CBX PhpSpreadSheet Library] プラグイン（有効化必須）
 
 ## 使い方
