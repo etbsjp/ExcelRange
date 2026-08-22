@@ -79,9 +79,12 @@ grep -nE "^ \* Version:" excelrange.php
   実行時（`admin_init`）に有効化チェックをしており、未有効化なら管理画面に通知が出る
   フェイルセーフ構成のため
 - 一方、プラグインとしての有効化必須自体は `Requires Plugins:  cbxphpspreadsheet` で宣言している
-  （task-queue#88）。`inc/func.php:15` の `is_plugin_active()` チェックと
-  `inc/tools/import-excel.php:430` の `\PhpOffice\PhpSpreadsheet\IOFactory::load()` 直接呼び出しにより、
-  無ければ Fatal になる硬い依存のため。cbxphpspreadsheet は wordpress.org 未掲載
+  （task-queue#88）。`inc/func.php:18` の `is_plugin_active()` チェックは管理画面通知を出すだけで
+  処理は止めないが、`inc/tools/import-excel.php:420-423` には `CBXPHPSPREADSHEET_ROOT_PATH` 未定義時に
+  `wp_send_json_error()`（内部で `wp_die()`）により処理を打ち切るガードがあり、この経路は
+  PHP Fatal にはならない（Excel取り込み機能が使えなくなるだけの、いずれもフェイルセーフな構成）。
+  つまりこの宣言は「Fatal を防ぐため」ではなく、**主要機能（Excelインポート）が丸ごと欠落した状態の
+  まま有効化され続けることを防ぐため**のもの。cbxphpspreadsheet は wordpress.org 未掲載
   （GitHub 配布のみ）だが、WP コアの `Requires Plugins` 解決は wordpress.org ではなく
   **インストール済みプラグインのフォルダ名（スラッグ）を突き合わせる**方式
   （`WP_Plugin_Dependencies::convert_to_slug()` / `get_plugin_dirnames()`）のため、
