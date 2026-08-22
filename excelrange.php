@@ -4,6 +4,7 @@
  * Description:       エクセルファイルのアクティブなシートのA1〜AZ300の範囲をpost_metaに保存してショートコードで呼び出すプラグイン
  * Version:           1.0.3
  * Requires PHP:      7.4
+ * Requires Plugins:  cbxphpspreadsheet
  * Author:            DAI
  * Author URI:        https://etbs.jp
  * Plugin URI:        https://etbs.jp/product-category/wordpress-tools/
