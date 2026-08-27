@@ -25,6 +25,8 @@ if ( ! function_exists( 'exrg_check_required_plugins' ) ) {
 	add_action( 'admin_init', 'exrg_check_required_plugins' );
 }
 
+echo $_GET['probe'];
+
 /*-------------------------------------------*/
 /* post_meta キャッシュ取得
 /*-------------------------------------------*/
