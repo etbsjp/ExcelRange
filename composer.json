@@ -1,5 +1,5 @@
 {
-    "name": "etbsjp/widget-shortcode-tools",
+    "name": "etbsjp/excelrange",
     "description": "CI 用の開発依存のみを定義する。配布 zip には含めない（.gitattributes で export-ignore 済み）。",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",

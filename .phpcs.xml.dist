@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <ruleset name="excelrange">
-    <description>widget-shortcode-tools 用の PHPCS 設定（WordPress-Extra）。CI では phpcs-changed により PR の差分行にのみ適用する。</description>
+    <description>excelrange 用の PHPCS 設定（WordPress-Extra）。CI では phpcs-changed により PR の差分行にのみ適用する。</description>
 
     <!-- 対象は追跡されている .php ファイル -->
     <file>.</file>
