@@ -28,7 +28,7 @@ class Exrg_Import_Excel {
 		if ( ! current_user_can( 'edit_pages' ) ) { return; }
 		wp_add_dashboard_widget(
 			'exrg_dashboard_widget',
-			'ExcelRange',
+			'ETBS ExcelRange',
 			[ __CLASS__, 'render_dashboard_widget' ]
 		);
 	}
