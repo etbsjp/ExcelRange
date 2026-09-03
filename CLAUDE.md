@@ -89,8 +89,11 @@ third-party action をタグ固定にしている判断・陽性対照・配布�
   の形でのみ行う。素の phpcs は `.gitignore` を尊重しない
   （★ この repo は `.gitignore` 済みの `inc/tools/import-excel-old.php` を持つ。
   限定せずに測ると**これを拾って 126 E / 8 W になる**）
-- **`Requires PHP: 7.4` を宣言している。** 置き場は `excelrange.php` の1箇所だけ（`readme.txt` は無い）。
-  CI の matrix `['7.4','8.3']` と**一致している状態を守ること**（片方だけ動かさない）
+- **`Requires PHP: 7.4` を宣言している。** 置き場は **`excelrange.php:6` と `readme.txt:5` の2箇所**で、
+  CI の matrix `['7.4','8.3']` と合わせて **3箇所を同時に動かす**（片方だけ動かさない）。
+  ★ PUC は `readme.txt` の `Requires PHP` で本体ヘッダを上書きする
+  （`inc/plugin-update-checker/Puc/v5p5/Vcs/PluginUpdateChecker.php`）。**更新リンクの可否を決めているのは readme 側の値**なので、
+  ヘッダと matrix だけ直して readme を残すと、宣言・配信・CI の保証範囲が静かに食い違う。
 - **原本との差は `composer.json` の `name`**（`etbsjp/excelrange` に改名し、`composer.lock` の
   `content-hash` も再生成済み）。★ **原本の `composer.lock` をコピーで上書きしないこと** ―
   落ちずに警告だけ出て完走し、`composer update` を促されて上の基準値が静かにずれる
